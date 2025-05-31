@@ -4,11 +4,22 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
+# Set to True if you log-transformed 'charges' during training, False otherwise
+you_logged_charges = True
+
 # Load the trained model
-model = joblib.load('insurance_charges_model.pkl')
+try:
+    model = joblib.load('insurance_charges_model.pkl')
+except FileNotFoundError:
+    st.error("Error: 'insurance_charges_model.pkl' not found. Make sure it's in the same directory or provide the correct path.")
+    st.stop()
 
 # Load the scaler (make sure you save it during training as well if you haven't)
-scaler = joblib.load('insurance_scaler.pkl') # Assuming you saved your StandardScaler
+try:
+    scaler = joblib.load('insurance_scaler.pkl')
+except FileNotFoundError:
+    st.warning("Warning: 'insurance_scaler.pkl' not found. Ensure you saved it during training. The app might not function as expected without scaling.")
+    scaler = None  # Handle the case where the scaler is not found
 
 # Define features (order matters!)
 features = ['age', 'sex', 'bmi', 'children', 'smoker', 'region_northwest', 'region_southeast', 'region_southwest']
@@ -32,7 +43,8 @@ def preprocess(data):
 
     # Select and scale numerical features
     numerical_cols = ['age', 'bmi', 'children']
-    df[numerical_cols] = scaler.transform(df[numerical_cols])
+    if scaler:
+        df[numerical_cols] = scaler.transform(df[numerical_cols])
 
     return df[features]
 
@@ -59,7 +71,7 @@ def main():
     if st.button('Predict Charges'):
         processed_data = preprocess(user_data)
         prediction = model.predict(processed_data)
-        predicted_charge = np.expm1(prediction)[0] if you log-transformed charges else prediction[0] # Revert log transformation if applied
+        predicted_charge = np.expm1(prediction)[0] if you_logged_charges else prediction[0] # Revert log transformation if applied
 
         st.subheader('Predicted Insurance Charges:')
         st.write(f'${predicted_charge:,.2f} USD')
