@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 # Set to True if you log-transformed 'charges' during training, False otherwise
-you_logged_charges = True
+you_logged_charges = False
 
 # Load the trained model
 try:
