@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 # Set to True if you log-transformed 'charges' during training, False otherwise
-you_logged_charges = False
+you_logged_charges = False  # Assuming you didn't based on the training notebook
 
 # Load the trained model
 try:
@@ -42,9 +42,9 @@ def preprocess(data):
             df[feature] = 0 # Or handle missing features appropriately
 
     # Select and scale numerical features
-    numerical_cols = ['age', 'bmi', 'children']
-    if scaler:
-        df[numerical_cols] = scaler.transform(df[numerical_cols])
+    # numerical_cols = ['age', 'bmi', 'children']
+    # if scaler:
+    #     df[numerical_cols] = scaler.transform(df[numerical_cols])
 
     return df[features]
 
@@ -52,12 +52,12 @@ def main():
     st.title('Medical Insurance Charges Prediction')
     st.write('Enter the patient details to predict insurance charges.')
 
-    age = st.number_input('Age', min_value=18, max_value=100, value=30)
+    age = st.number_input('Age', min_value=18, max_value=100, value=25)
     sex = st.selectbox('Sex', options=['female', 'male'])
-    bmi = st.number_input('BMI', min_value=10.0, max_value=60.0, value=25.0)
+    bmi = st.number_input('BMI', min_value=10.0, max_value=60.0, value=22.5)
     children = st.number_input('Number of Children', min_value=0, max_value=5, value=0)
     smoker = st.selectbox('Smoker', options=['no', 'yes'])
-    region = st.selectbox('Region', options=['southwest', 'southeast', 'northwest', 'northeast'])
+    region = st.selectbox('Region', options=['northwest', 'southeast', 'southwest', 'northeast'])
 
     user_data = {
         'age': age,
@@ -70,7 +70,7 @@ def main():
 
     if st.button('Predict Charges'):
         processed_data = preprocess(user_data)
-        st.write("Processed Data:", processed_data)
+        st.write("Processed Data:", processed_data)  # For debugging
         prediction = model.predict(processed_data)
         predicted_charge = np.expm1(prediction)[0] if you_logged_charges else prediction[0] # Revert log transformation if applied
 
