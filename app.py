@@ -70,6 +70,7 @@ def main():
 
     if st.button('Predict Charges'):
         processed_data = preprocess(user_data)
+        st.write("Processed Data:", processed_data)
         prediction = model.predict(processed_data)
         predicted_charge = np.expm1(prediction)[0] if you_logged_charges else prediction[0] # Revert log transformation if applied
 
