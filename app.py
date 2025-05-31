@@ -2,79 +2,68 @@ import streamlit as st
 import pandas as pd
 import joblib
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+import os
 
-# Set to True if you log-transformed 'charges' during training, False otherwise
-you_logged_charges = True
+# List files in the current directory
+print("Current directory contents:")
+print(os.listdir('.'))
+print("--------------------")
 
 # Load the trained model
-try:
-    model = joblib.load('insurance_charges_model.pkl')
-except FileNotFoundError:
-    st.error("Error: 'insurance_charges_model.pkl' not found. Make sure it's in the same directory or provide the correct path.")
-    st.stop()
+model = joblib.load('titanic_lr_model.pkl')
 
-# Load the scaler (make sure you save it during training as well if you haven't)
-try:
-    scaler = joblib.load('insurance_scaler.pkl')
-except FileNotFoundError:
-    st.warning("Warning: 'insurance_scaler.pkl' not found. Ensure you saved it during training. The app might not function as expected without scaling.")
-    scaler = None  # Handle the case where the scaler is not found
+# Feature names (make sure these match the order used during training)
+feature_names = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'HasCabin',
+                 'Embarked_Q', 'Embarked_S', 'FamilySize', 'Title_Miss',
+                 'Title_Mr', 'Title_Mrs', 'Title_Rare']
 
-# Define features (order matters!)
-features = ['age', 'sex', 'bmi', 'children', 'smoker', 'region_northwest', 'region_southeast', 'region_southwest']
-
-def preprocess(data):
-    df = pd.DataFrame([data], columns=['age', 'sex', 'bmi', 'children', 'smoker', 'region'])
-
-    # Manual Binary Encoding for 'sex' and 'smoker'
-    df['sex'] = df['sex'].map({'female': 1, 'male': 0}).fillna(0).astype(int)
-    df['smoker'] = df['smoker'].map({'yes': 1, 'no': 0}).fillna(0).astype(int)
-
-    # One-Hot Encoding for 'region'
-    region_dummies = pd.get_dummies(df['region'], prefix='region', drop_first=True, dtype=int)
-    df = pd.concat([df, region_dummies], axis=1)
-    df.drop('region', axis=1, inplace=True)
-
-    # Ensure all features are present and in the correct order
-    for feature in features:
-        if feature not in df.columns:
-            df[feature] = 0 # Or handle missing features appropriately
-
-    # Select and scale numerical features
-    numerical_cols = ['age', 'bmi', 'children']
-    if scaler:
-        df[numerical_cols] = scaler.transform(df[numerical_cols])
-
-    return df[features]
+def predict_survival(features):
+    features_df = pd.DataFrame([features], columns=feature_names)
+    prediction = model.predict(features_df)
+    probability = model.predict_proba(features_df)[:, 1]
+    return prediction[0], probability[0]
 
 def main():
-    st.title('Medical Insurance Charges Prediction')
-    st.write('Enter the patient details to predict insurance charges.')
+    st.title('Titanic Survival Prediction')
+    st.write('Enter passenger details to predict their survival.')
 
-    age = st.number_input('Age', min_value=18, max_value=100, value=30)
-    sex = st.selectbox('Sex', options=['female', 'male'])
-    bmi = st.number_input('BMI', min_value=10.0, max_value=60.0, value=25.0)
-    children = st.number_input('Number of Children', min_value=0, max_value=5, value=0)
-    smoker = st.selectbox('Smoker', options=['no', 'yes'])
-    region = st.selectbox('Region', options=['southwest', 'southeast', 'northwest', 'northeast'])
+    # Create input fields for each feature
+    pclass = st.sidebar.selectbox('Passenger Class', options=[1, 2, 3])
+    sex = st.sidebar.selectbox('Sex', options=['male', 'female'])
+    age = st.sidebar.number_input('Age', min_value=0, max_value=100, value=30)
+    sibsp = st.sidebar.number_input('SibSp (Number of siblings/spouses aboard)', min_value=0, max_value=10, value=0)
+    parch = st.sidebar.number_input('Parch (Number of parents/children aboard)', min_value=0, max_value=10, value=0)
+    fare = st.sidebar.number_input('Fare', min_value=0, max_value=600, value=30)
+    has_cabin = st.sidebar.selectbox('Had Cabin?', options=['Yes', 'No'])
+    embarked = st.sidebar.selectbox('Embarked Port', options=['Southampton', 'Queenstown', 'Cherbourg'])
+    family_size = sibsp + parch + 1
 
-    user_data = {
-        'age': age,
-        'sex': sex,
-        'bmi': bmi,
-        'children': children,
-        'smoker': smoker,
-        'region': region
-    }
+    # Handle categorical features based on user input
+    sex_encoded = 1 if sex == 'female' else 0
+    has_cabin_encoded = 1 if has_cabin == 'Yes' else 0
+    embarked_q = 1 if embarked == 'Queenstown' else 0
+    embarked_s = 1 if embarked == 'Southampton' else 0
 
-    if st.button('Predict Charges'):
-        processed_data = preprocess(user_data)
-        prediction = model.predict(processed_data)
-        predicted_charge = np.expm1(prediction)[0] if you_logged_charges else prediction[0] # Revert log transformation if applied
+    # Assume a simple title based on Sex for demonstration. You might need more complex logic.
+    title_mr = 1 if sex == 'male' else 0
+    title_miss = 1 if sex == 'female' and age <= 30 else 0 # Simplified
+    title_mrs = 1 if sex == 'female' and age > 30 else 0  # Simplified
+    title_rare = 0
 
-        st.subheader('Predicted Insurance Charges:')
-        st.write(f'${predicted_charge:,.2f} USD')
+    features = [pclass, sex_encoded, age, sibsp, parch, fare, has_cabin_encoded,
+                embarked_q, embarked_s, family_size, title_miss, title_mr, title_mrs, title_rare]
+
+    if st.button('Predict Survival'):
+        prediction, probability = predict_survival(features)
+
+        st.subheader('Prediction:')
+        if prediction == 1:
+            st.write('The passenger is predicted to have survived.')
+        else:
+            st.write('The passenger is predicted not to have survived.')
+
+        st.subheader('Probability of Survival:')
+        st.write(f'{probability:.2f}')
 
 if __name__ == '__main__':
     main()
